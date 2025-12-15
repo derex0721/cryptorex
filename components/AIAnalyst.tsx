@@ -148,7 +148,10 @@ const AIAnalyst: React.FC<AIAnalystProps> = ({ selectedCoin, language }) => {
         </div>
         <div>
           <h3 className="font-bold text-crypto-text text-sm">{t.aiAnalyst}</h3>
-          <p className="text-xs text-indigo-400">Powered by Gemini 2.5 Flash</p>
+          <p className="text-xs text-indigo-400 flex items-center gap-1">
+             <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
+             Powered by Gemini 2.5 Flash
+          </p>
         </div>
       </div>
 
@@ -160,17 +163,17 @@ const AIAnalyst: React.FC<AIAnalystProps> = ({ selectedCoin, language }) => {
             className={`flex flex-col ${msg.role === MessageRole.USER ? 'items-end' : 'items-start'}`}
           >
             <div
-              className={`max-w-[85%] rounded-2xl p-4 text-sm leading-relaxed ${
+              className={`max-w-[85%] rounded-2xl p-4 text-sm leading-relaxed shadow-sm ${
                 msg.role === MessageRole.USER
                   ? 'bg-indigo-600 text-white rounded-tr-none'
                   : 'bg-crypto-subtle text-crypto-text rounded-tl-none border border-crypto-border'
               }`}
             >
               {msg.isThinking && !msg.text ? (
-                 <div className="flex space-x-2 items-center h-5">
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                 <div className="flex space-x-2 items-center h-5 px-1">
+                    <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                    <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                    <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
                  </div>
               ) : (
                 <div className="whitespace-pre-wrap markdown-body">{msg.text}</div>
@@ -179,7 +182,7 @@ const AIAnalyst: React.FC<AIAnalystProps> = ({ selectedCoin, language }) => {
             
             {/* Render Trend Card if present */}
             {msg.trendResult && (
-              <div className="w-full max-w-[95%] mt-2">
+              <div className="w-full max-w-[95%] mt-2 animate-fade-in-up">
                 <TrendAnalysisCard data={msg.trendResult} language={language} />
               </div>
             )}
@@ -189,7 +192,7 @@ const AIAnalyst: React.FC<AIAnalystProps> = ({ selectedCoin, language }) => {
       </div>
 
       {/* Input */}
-      <div className="p-4 bg-crypto-subtle/50 border-t border-crypto-border">
+      <div className="p-4 bg-crypto-subtle/50 border-t border-crypto-border backdrop-blur-sm">
         <div className="flex items-center gap-2">
           {/* Deep Scan Button */}
           <button
