@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CryptoSight AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    
+    <!-- Babel for in-browser JSX transformation -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Inter', 'sans-serif'],
+              mono: ['JetBrains Mono', 'monospace'],
+            },
+            colors: {
+              crypto: {
+                main: 'var(--bg-main)',
+                card: 'var(--bg-card)',
+                subtle: 'var(--bg-subtle)',
+                border: 'var(--border-color)',
+                text: 'var(--text-main)',
+                muted: 'var(--text-muted)',
+                accent: '#3B82F6',
+                success: '#10B981',
+                danger: '#EF4444',
+              }
+            },
+            keyframes: {
+              'fade-in-up': {
+                '0%': { opacity: '0', transform: 'translateY(10px)' },
+                '100%': { opacity: '1', transform: 'translateY(0)' },
+              }
+            },
+            animation: {
+              'fade-in-up': 'fade-in-up 0.5s ease-out forwards',
+            }
+          }
+        }
+      }
+    </script>
+    <style>
+      body {
+        background-color: var(--bg-main);
+        color: var(--text-main);
+        transition: background-color 0.5s ease, color 0.5s ease;
+      }
+      
+      /* THEME DEFINITIONS */
+      
+      /* 1. Cyber Dark (Default) */
+      :root, .theme-dark {
+        --bg-main: #0B0E14;
+        --bg-card: #151A23;
+        --bg-subtle: #1F2937;
+        --border-color: #374151;
+        --text-main: #E2E8F0;
+        --text-muted: #94A3B8;
+      }
+
+      /* 2. Polar Light */
+      .theme-light {
+        --bg-main: #F1F5F9;
+        --bg-card: #FFFFFF;
+        --bg-subtle: #E2E8F0;
+        --border-color: #CBD5E1;
+        --text-main: #0F172A;
+        --text-muted: #64748B;
+      }
+
+      /* 3. Midnight Dream (Gradient) */
+      .theme-midnight {
+        --bg-main: #0F0C29; /* Fallback */
+        --bg-card: #24243E;
+        --bg-subtle: #302B63;
+        --border-color: #4A4580;
+        --text-main: #E0E7FF;
+        --text-muted: #A5B4FC;
+      }
+      .theme-midnight body, .theme-midnight.main-container {
+        background: linear-gradient(to bottom, #0F0C29, #302B63, #24243E) fixed;
+      }
+
+      /* 4. Oceanic Depth */
+      .theme-ocean {
+        --bg-main: #020617;
+        --bg-card: #0F172A;
+        --bg-subtle: #1E293B;
+        --border-color: #1E293B;
+        --text-main: #E0F2FE;
+        --text-muted: #7DD3FC;
+      }
+      .theme-ocean body, .theme-ocean.main-container {
+        background: radial-gradient(circle at top, #0c4a6e, #020617) fixed;
+      }
+
+      /* 5. Sunset Glow */
+      .theme-sunset {
+        --bg-main: #1C1917;
+        --bg-card: #292524;
+        --bg-subtle: #44403C;
+        --border-color: #57534E;
+        --text-main: #FDE68A;
+        --text-muted: #FCA5A5;
+      }
+
+      /* Custom Scrollbar */
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: var(--bg-card); 
+      }
+      ::-webkit-scrollbar-thumb {
+        background: var(--bg-subtle); 
+        border-radius: 4px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: var(--border-color); 
+      }
+      
+      .main-container {
+        transition: all 0.5s ease;
+      }
+      
+      .no-scrollbar::-webkit-scrollbar {
+          display: none;
+      }
+      .no-scrollbar {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@18.2.0",
+    "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+    "recharts": "https://esm.sh/recharts@2.12.0?external=react,react-dom",
+    "@google/genai": "https://esm.sh/@google/genai@0.0.10",
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/"
+  }
+}
+</script>
+</head>
+  <body>
+    <div id="root"></div>
+
+    <script type="text/babel" data-type="module">
+      import React, { useState, useEffect, useRef } from 'react';
+      import ReactDOM from 'react-dom/client';
+      import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+      import { GoogleGenAI, Type } from "@google/genai";
+
+      // --- ENVIRONMENT POLYFILL ---
+      // IMPORTANT: Replace 'YOUR_API_KEY' with your actual Google Gemini API Key
+      window.process = {
+        env: {
+          API_KEY: '' 
+        }
+      };
+
+      // --- TYPES (Simulated via Comments/Interfaces) ---
+      /*
+      interface CoinData { ... }
+      interface FundingRound { ... }
+      interface IntelEntity { ... }
+      interface IntelTransaction { ... }
+      */
+      
+      const MessageRole = {
+        USER: 'user',
+        MODEL: 'model'
+      };
+
+      // --- CONSTANTS ---
+      const LANGUAGES = [
+        { code: 'zh-TW', name: '中文', promptName: 'Traditional Chinese', flag: '🇹🇼' },
+        { code: 'en', name: 'English', promptName: 'English', flag: '🇺🇸' },
+        { code: 'ru', name: 'Русский', promptName: 'Russian', flag: '🇷🇺' },
+        { code: 'ko', name: '한국어', promptName: 'Korean', flag: '🇰🇷' },
+        { code: 'fr', name: 'Français', promptName: 'French', flag: '🇫🇷' },
+        { code: 'id', name: 'Indonesia', promptName: 'Indonesian', flag: '🇮🇩' },
+      ];
+
+      const THEMES = [
+        { id: 'dark', name: 'Cyber Dark', colors: { bg: '#0B0E14', card: '#151A23', primary: '#10B981' } },
+        { id: 'light', name: 'Polar Light', colors: { bg: '#F8FAFC', card: '#FFFFFF', primary: '#4F46E5' } },
+        { id: 'midnight', name: 'Midnight Dream', colors: { bg: '#0F0c29', card: '#24243e', primary: '#a78bfa' } },
+        { id: 'ocean', name: 'Oceanic Depth', colors: { bg: '#0f172a', card: '#1e293b', primary: '#38bdf8' } },
+        { id: 'sunset', name: 'Sunset Glow', colors: { bg: '#1c1917', card: '#292524', primary: '#fb923c' } }
+      ];
+
+      const TRANSLATIONS = {
+        'zh-TW': {
+          navTitle: 'CryptoSight', market: '市場', financing: '融資', intel: '情報', searchPlaceholder: '搜尋...', trending: '熱搜', marketOverview: '市場概況', asset: '資產', price: '價格', change: '漲跌', vol: '量', recentRaises: '近期融資 & ICO', source: '來源', projectSector: '項目 / 賽道', round: '輪次', amountVal: '金額 / 估值', investors: '投資人', details: '詳情', analysis: '分析', deepScan: '深度掃描', aiAnalyst: 'AI 分析師', askPlaceholder: '詢問關於', loading: '載入中...', chartDataUnavailable: '圖表數據不可用', priceAction7d: '價格走勢 (7天)', marketCap: '市值', volume24h: '交易量 (24h)', high24h: '最高 (24h)', low24h: '最低 (24h)', about: '關於', range24h: '24h 範圍', sentiment: '市場情緒', strategy: '策略', keyNarrative: '關鍵敘事', support: '支撐位', resistance: '壓力位', analysisComplete: '分析完成。以下是結構化報告：', analysisError: '無法生成分析報告。', aiGreeting: '你好！我是你的 AI 加密貨幣分析師。我可以為你分析 {coin} 的市場趨勢。', coinSwitched: '已切換至 {coin}。', bullish: '看漲', bearish: '看跌', neutral: '中立', rank: '排名', generatedBy: '由 AI 生成分析，非投資建議。', theme: '主題', entities: '實體追蹤', transactions: '即時異動', from: '發送方', to: '接收方', value: '價值', token: '代幣'
+        },
+        'en': {
+          navTitle: 'CryptoSight', market: 'Market', financing: 'Financing', intel: 'Intel', searchPlaceholder: 'Search...', trending: 'Trending Now', marketOverview: 'Market Overview', asset: 'Asset', price: 'Price', change: 'Change', vol: 'Vol', recentRaises: 'Recent Raises & ICOS', source: 'Source', projectSector: 'Project / Sector', round: 'Round', amountVal: 'Amount / Val', investors: 'Investors', details: 'Details', analysis: 'Analysis', deepScan: 'Deep Scan', aiAnalyst: 'AI Analyst', askPlaceholder: 'Ask about', loading: 'Loading...', chartDataUnavailable: 'Chart Data Unavailable', priceAction7d: 'Price Action (7d)', marketCap: 'Market Cap', volume24h: 'Volume (24h)', high24h: 'High (24h)', low24h: 'Low (24h)', about: 'About', range24h: '24h Range', sentiment: 'Market Sentiment', strategy: 'Strategy', keyNarrative: 'Key Narrative', support: 'Support', resistance: 'Resistance', analysisComplete: 'Analysis Complete. Here is the structured report:', analysisError: 'Could not generate analysis report.', aiGreeting: 'Hello! I am your AI Crypto Analyst. I can analyze market trends for {coin}.', coinSwitched: 'Switched to {coin}.', bullish: 'Bullish', bearish: 'Bearish', neutral: 'Neutral', rank: 'Rank', generatedBy: 'AI Generated Analysis. Not Financial Advice.', theme: 'Theme', entities: 'Entities', transactions: 'Live Transactions', from: 'From', to: 'To', value: 'Value', token: 'Token'
+        },
+        'ru': {
+            navTitle: 'CryptoSight', market: 'Рынок', financing: 'Финансы', intel: 'Разведка', searchPlaceholder: 'Поиск...', trending: 'В тренде', marketOverview: 'Обзор рынка', asset: 'Актив', price: 'Цена', change: 'Изм.', vol: 'Объем', recentRaises: 'Недавние сборы и ICO', source: 'Источник', projectSector: 'Проект / Сектор', round: 'Раунд', amountVal: 'Сумма / Оценка', investors: 'Инвесторы', details: 'Детали', analysis: 'Анализ', deepScan: 'Глуб. скан', aiAnalyst: 'AI Аналитик', askPlaceholder: 'Спросить о', loading: 'Загрузка...', chartDataUnavailable: 'Данные недоступны', priceAction7d: 'Цена (7д)', marketCap: 'Капитализация', volume24h: 'Объем (24ч)', high24h: 'Макс (24ч)', low24h: 'Мин (24ч)', about: 'О проекте', range24h: 'Диапазон 24ч', sentiment: 'Настроение', strategy: 'Стратегия', keyNarrative: 'Ключевой нарратив', support: 'Поддержка', resistance: 'Сопротивление', analysisComplete: 'Анализ завершен. Вот отчет:', analysisError: 'Не удалось создать отчет.', aiGreeting: 'Привет! Я твой крипто-аналитик. Я могу проанализировать тренды для {coin}.', coinSwitched: 'Переключено на {coin}.', bullish: 'Бычий', bearish: 'Медвежий', neutral: 'Нейтр.', rank: 'Ранг', generatedBy: 'Анализ создан ИИ. Не финансовый совет.', theme: 'Тема', entities: 'Сущности', transactions: 'Транзакции', from: 'От', to: 'Кому', value: 'Сумма', token: 'Токен'
+        },
+        'ko': {
+             navTitle: 'CryptoSight', market: '시장', financing: '자금 조달', intel: '인텔', searchPlaceholder: '검색...', trending: '인기 급상승', marketOverview: '시장 개요', asset: '자산', price: '가격', change: '변동', vol: '거래량', recentRaises: '최근 모금 & ICO', source: '출처', projectSector: '프로젝트 / 섹터', round: '라운드', amountVal: '금액 / 가치', investors: '투자자', details: '상세', analysis: '분석', deepScan: '정밀 진단', aiAnalyst: 'AI 분석가', askPlaceholder: '질문하기', loading: '로딩 중...', chartDataUnavailable: '데이터 없음', priceAction7d: '가격 변동 (7일)', marketCap: '시가총액', volume24h: '거래량 (24시간)', high24h: '고가 (24시간)', low24h: '저가 (24시간)', about: '정보', range24h: '24시간 범위', sentiment: '시장 심리', strategy: '전략', keyNarrative: '핵심 서사', support: '지지선', resistance: '저항선', analysisComplete: '분석 완료. 구조화된 보고서입니다:', analysisError: '분석 보고서를 생성할 수 없습니다.', aiGreeting: '안녕하세요! AI 암호화폐 분석가입니다. {coin}의 시장 동향을 분석해 드릴 수 있습니다.', coinSwitched: '{coin}으로 전환되었습니다.', bullish: '상승세', bearish: '하락세', neutral: '중립', rank: '순위', generatedBy: 'AI가 생성한 분석입니다. 재정적 조언이 아닙니다.', theme: '테마', entities: '엔티티', transactions: '실시간 거래', from: '보낸 사람', to: '받는 사람', value: '가치', token: '토큰'
+        },
+        'fr': {
+            navTitle: 'CryptoSight', market: 'Marché', financing: 'Financement', intel: 'Rens.', searchPlaceholder: 'Rechercher...', trending: 'Tendances', marketOverview: 'Aperçu du marché', asset: 'Actif', price: 'Prix', change: 'Var.', vol: 'Vol', recentRaises: 'Levées récentes & ICO', source: 'Source', projectSector: 'Projet / Secteur', round: 'Tour', amountVal: 'Montant / Val', investors: 'Investisseurs', details: 'Détails', analysis: 'Analyse', deepScan: 'Scan Profond', aiAnalyst: 'Analyste IA', askPlaceholder: 'Demander sur', loading: 'Chargement...', chartDataUnavailable: 'Données indisponibles', priceAction7d: 'Prix (7j)', marketCap: 'Cap. Marché', volume24h: 'Volume (24h)', high24h: 'Haut (24h)', low24h: 'Bas (24h)', about: 'À propos', range24h: 'Gamme 24h', sentiment: 'Sentiment', strategy: 'Stratégie', keyNarrative: 'Narratif Clé', support: 'Support', resistance: 'Résistance', analysisComplete: 'Analyse terminée. Voici le rapport :', analysisError: 'Impossible de générer le rapport.', aiGreeting: 'Bonjour ! Je suis votre analyste crypto IA. Je peux analyser les tendances pour {coin}.', coinSwitched: 'Passé à {coin}.', bullish: 'Haussier', bearish: 'Baissier', neutral: 'Neutre', rank: 'Rang', generatedBy: 'Analyse générée par IA. Pas un conseil financier.', theme: 'Thème', entities: 'Entités', transactions: 'Transactions', from: 'De', to: 'À', value: 'Valeur', token: 'Jeton'
+        },
+        'id': {
+             navTitle: 'CryptoSight', market: 'Pasar', financing: 'Pendanaan', intel: 'Intel', searchPlaceholder: 'Cari...', trending: 'Tren Sekarang', marketOverview: 'Ikhtisar Pasar', asset: 'Aset', price: 'Harga', change: 'Perubahan', vol: 'Vol', recentRaises: 'Penggalangan Dana & ICO', source: 'Sumber', projectSector: 'Proyek / Sektor', round: 'Putaran', amountVal: 'Jumlah / Valuasi', investors: 'Investor', details: 'Detail', analysis: 'Analisis', deepScan: 'Pindai Dalam', aiAnalyst: 'Analis AI', askPlaceholder: 'Tanya tentang', loading: 'Memuat...', chartDataUnavailable: 'Data Grafik Tidak Tersedia', priceAction7d: 'Aksi Harga (7h)', marketCap: 'Kap Pasar', volume24h: 'Volume (24j)', high24h: 'Tinggi (24j)', low24h: 'Rendah (24j)', about: 'Tentang', range24h: 'Rentang 24j', sentiment: 'Sentimen Pasar', strategy: 'Strategi', keyNarrative: 'Narasi Utama', support: 'Dukungan', resistance: 'Resistensi', analysisComplete: 'Analisis Selesai. Ini laporannya:', analysisError: 'Tidak dapat membuat laporan analisis.', aiGreeting: 'Halo! Saya Analis Kripto AI Anda. Saya dapat menganalisis tren pasar untuk {coin}.', coinSwitched: 'Beralih ke {coin}.', bullish: 'Bullish', bearish: 'Bearish', neutral: 'Netral', rank: 'Peringkat', generatedBy: 'Analisis Dibuat AI. Bukan Saran Keuangan.', theme: 'Tema', entities: 'Entitas', transactions: 'Transaksi', from: 'Dari', to: 'Ke', value: 'Nilai', token: 'Token'
+        }
+      };
+
+      const generateHistory = (basePrice, volatility) => {
+        const history = [];
+        let price = basePrice;
+        for (let i = 0; i < 24; i++) {
+          price = price * (1 + (Math.random() * volatility - volatility / 2));
+          history.push({
+            time: `${i}:00`,
+            price: price
+          });
+        }
+        return history;
+      };
+
+      const COINS = [
+        {
+          id: "bitcoin", symbol: "BTC", name: "Bitcoin", price: 64230.50, change24h: 2.4, volume: "32.1B", marketCap: "1.2T",
+          history: generateHistory(64000, 0.02), description: "The first decentralized cryptocurrency. Store of value."
+        },
+        {
+          id: "ethereum", symbol: "ETH", name: "Ethereum", price: 3450.12, change24h: -1.2, volume: "15.4B", marketCap: "400B",
+          history: generateHistory(3500, 0.03), description: "Smart contract platform powering DeFi and NFTs."
+        }
+      ];
+
+      const INITIAL_SYSTEM_PROMPT = `
+      You are CryptoSight AI, an elite cryptocurrency market analyst. 
+      Your tone is professional, concise, and data-driven, yet accessible.
+      You provide technical analysis, market sentiment analysis, and risk assessment.
+      When analyzing a coin, consider its price action, volume, and general market context.
+      Format your responses with clear markdown, using bold text for key figures.
+      If asked about investment advice, provide analysis but add a disclaimer that this is not financial advice.
+      `;
+
+      // --- SERVICES ---
+      
+      // Gemini Service
+      let client = null;
+      const getClient = () => {
+        if (!client && window.process.env.API_KEY) {
+          client = new GoogleGenAI({ apiKey: window.process.env.API_KEY });
+        }
+        return client;
+      };
+
+      const getLanguageInstruction = (langCode) => {
+        const langName = LANGUAGES.find(l => l.code === langCode)?.promptName || 'English';
+        return `IMPORTANT: Respond strictly in ${langName}.`;
+      };
+
+      const streamMarketAnalysis = async function* (prompt, contextData, language) {
+          const ai = getClient();
+          if (!ai) { yield "Please set your API Key in the code to use AI features."; return; }
+          const langInstruction = getLanguageInstruction(language);
+          const fullPrompt = `Context Data: ${contextData}\n\nUser Question: ${prompt}\n\n${langInstruction}`;
+          
+          try {
+            const streamResponse = await ai.models.generateContentStream({
+                model: 'gemini-2.5-flash',
+                contents: fullPrompt,
+                config: { systemInstruction: INITIAL_SYSTEM_PROMPT }
+            });
+            for await (const chunk of streamResponse) {
+                yield chunk.text || "";
+            }
+          } catch(e) {
+            console.error(e);
+            yield "Error connecting to AI service.";
+          }
+      }
+
+      const generateTrendAnalysis = async (coinName, contextData, language) => {
+        const ai = getClient();
+        if (!ai) return null;
+        const langName = LANGUAGES.find(l => l.code === language)?.promptName || 'English';
+        const prompt = `Analyze the provided market data for ${coinName}. 
+        Based on the price history and volatility in the context, determine the current trend, support/resistance levels, and sentiment.
+        Provide a strictly valid JSON response.
+        Translate the 'keyNarrative' and 'actionableInsight' values into ${langName}.
+        `;
+
+        const schema = {
+          type: Type.OBJECT,
+          properties: {
+            sentimentScore: { type: Type.NUMBER, description: "A score from 0 (Bearish) to 100 (Bullish)" },
+            trend: { type: Type.STRING, enum: ["Bullish", "Bearish", "Neutral"] },
+            confidence: { type: Type.NUMBER, description: "Confidence percentage 0-100" },
+            supportLevels: { type: Type.ARRAY, items: { type: Type.NUMBER }, description: "List of 3 estimated support prices" },
+            resistanceLevels: { type: Type.ARRAY, items: { type: Type.NUMBER }, description: "List of 3 estimated resistance prices" },
+            keyNarrative: { type: Type.STRING, description: `A one sentence summary of the market driver in ${langName}` },
+            actionableInsight: { type: Type.STRING, description: `A concise actionable tip for a trader in ${langName}` }
+          },
+          required: ["sentimentScore", "trend", "confidence", "supportLevels", "resistanceLevels", "keyNarrative", "actionableInsight"]
+        };
+
+        try {
+          const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: `Context: ${contextData}\n\nTask: ${prompt}`,
+            config: {
+              responseMimeType: "application/json",
+              responseSchema: schema,
+              temperature: 0.5,
+            }
+          });
+          if (response.text) return JSON.parse(response.text);
+          return null;
+        } catch (error) {
+          console.error("Trend Analysis Error:", error);
+          return null;
+        }
+      };
+
+      // API Service
+      const CG_API_BASE = "https://api.coingecko.com/api/v3";
+      const LLAMA_API_BASE = "https://api.llama.fi";
+
+      const formatNumber = (num) => {
+        if (!num) return "-";
+        if (num >= 1e12) return (num / 1e12).toFixed(2) + 'T';
+        if (num >= 1e9) return (num / 1e9).toFixed(2) + 'B';
+        if (num >= 1e6) return (num / 1e6).toFixed(2) + 'M';
+        if (num >= 1e3) return (num / 1e3).toFixed(2) + 'K';
+        return num.toString();
+      };
+
+      const formatAmount = (amount) => (!amount) ? "Undisclosed" : "$" + formatNumber(amount);
+
+      const fetchMarketData = async () => {
+        try {
+          const response = await fetch(`${CG_API_BASE}/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&page=1&sparkline=true&price_change_percentage=24h`);
+          if (!response.ok) throw new Error("Failed");
+          const data = await response.json();
+          return data.map((coin) => ({
+            id: coin.id,
+            symbol: coin.symbol.toUpperCase(),
+            name: coin.name,
+            price: coin.current_price,
+            change24h: coin.price_change_percentage_24h,
+            volume: formatNumber(coin.total_volume),
+            marketCap: formatNumber(coin.market_cap),
+            history: coin.sparkline_in_7d?.price.slice(-24).map((price, index) => ({ time: `${index}:00`, price: price })) || [],
+            description: `${coin.name} rank #${coin.market_cap_rank}. Market Cap: ${formatNumber(coin.market_cap)}.`,
+            image: coin.image,
+            high24h: coin.high_24h,
+            low24h: coin.low_24h,
+            rank: coin.market_cap_rank
+          }));
+        } catch (error) {
+          console.warn("Using fallback market data");
+          return COINS; 
+        }
+      };
+
+      const fetchTrendingCoins = async () => {
+        try {
+          const response = await fetch(`${CG_API_BASE}/search/trending`);
+          if (!response.ok) return [];
+          const data = await response.json();
+          return data.coins.map((item) => ({
+            id: item.item.id,
+            name: item.item.name,
+            symbol: item.item.symbol,
+            market_cap_rank: item.item.market_cap_rank,
+            thumb: item.item.thumb,
+            price_btc: item.item.price_btc
+          }));
+        } catch { return []; }
+      };
+
+      const fetchFundingData = async () => {
+        try {
+          const response = await fetch(`${LLAMA_API_BASE}/raises`);
+          if (!response.ok) throw new Error("Failed");
+          const data = await response.json();
+          const raises = data.raises || [];
+          return raises.sort((a, b) => b.date - a.date).slice(0, 60).map((item, index) => ({
+            id: `${item.name}-${item.date}-${index}`,
+            date: new Date(item.date * 1000).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }),
+            name: item.name,
+            round: item.round,
+            amount: formatAmount(item.amount),
+            rawAmount: item.amount,
+            leadInvestors: item.leadInvestors || [],
+            investors: item.otherInvestors || [],
+            valuation: item.valuation ? formatNumber(item.valuation) : "-",
+            category: item.category || "Web3",
+            description: item.description,
+            link: item.url
+          }));
+        } catch { return []; }
+      };
+
+      const fetchIntelData = async () => {
+        await new Promise(resolve => setTimeout(resolve, 800));
+        const entities = [
+          { id: '1', name: 'Vitalik.eth', type: 'Whale', label: 'Vitalik Buterin', balanceUsd: '$4.2M', pnl24h: 1.2, tags: ['ENS', 'Founder'] },
+          { id: '2', name: 'Alameda Remediation', type: 'Fund', label: 'FTX Liquidators', balanceUsd: '$240M', pnl24h: -0.5, tags: ['Liquidator', 'Exchange'] },
+          { id: '3', name: 'Binance Hot Wallet 6', type: 'Exchange', label: 'Binance', balanceUsd: '$2.1B', pnl24h: 0.1, tags: ['CEX', 'Hot Wallet'] },
+          { id: '4', name: 'Justin Sun', type: 'Whale', label: 'Justin Sun', balanceUsd: '$345M', pnl24h: 3.4, tags: ['TRON', 'Founder'] },
+          { id: '5', name: 'Wintermute Trading', type: 'Fund', label: 'Wintermute', balanceUsd: '$89M', pnl24h: 0.8, tags: ['MM', 'VC'] },
+          { id: '6', name: 'Uniswap V3: USDC-ETH', type: 'Defi Protocol', label: 'Uniswap', balanceUsd: '$120M', pnl24h: 0.0, tags: ['DEX', 'Pool'] },
+        ];
+        const transactions = [];
+        const tokens = ['ETH', 'USDC', 'USDT', 'WBTC', 'PEPE', 'SHIB', 'MKR'];
+        for (let i = 0; i < 20; i++) {
+          const isInflow = Math.random() > 0.5;
+          const amount = Math.random() * 1000000;
+          const token = tokens[Math.floor(Math.random() * tokens.length)];
+          const price = token === 'ETH' ? 3000 : token === 'WBTC' ? 60000 : 1;
+          transactions.push({
+            id: `tx-${i}`,
+            time: `${Math.floor(Math.random() * 60)} mins ago`,
+            fromAddress: isInflow ? '0x' + Math.random().toString(16).substr(2, 4) + '...' : entities[Math.floor(Math.random() * entities.length)].label,
+            fromLabel: isInflow ? 'Unknown Wallet' : undefined,
+            toAddress: !isInflow ? '0x' + Math.random().toString(16).substr(2, 4) + '...' : entities[Math.floor(Math.random() * entities.length)].label,
+            toLabel: !isInflow ? 'Binance Deposit' : undefined,
+            tokenSymbol: token,
+            tokenAmount: Math.floor(Math.random() * 1000),
+            valueUsd: Math.floor(amount * price / 1000),
+            hash: '0x' + Math.random().toString(16).substr(2, 10) + '...'
+          });
+        }
+        transactions.sort((a, b) => b.valueUsd - a.valueUsd);
+        return { entities, transactions };
+      };
+
+      // --- COMPONENTS ---
+
+      // Icons
+      const TrendingUpIcon = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>);
+      const TrendingDownIcon = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"></polyline><polyline points="17 18 23 18 23 12"></polyline></svg>);
+      const BrainCircuitIcon = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M12 5V3" /><path d="M12 21v-2" /><path d="M5 12H3" /><path d="M21 12h-2" /><path d="M18.364 5.636 19.778 4.222" /><path d="M4.222 19.778 5.636 18.364" /><path d="M19.778 19.778 18.364 18.364" /><path d="M5.636 5.636 4.222 4.222" /><path d="M16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0Z" /><path d="M9 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" opacity="0.5" /><path d="M21 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" opacity="0.5" /></svg>);
+      const SendIcon = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m22 2-7 20-4-9-9-4Z" /><path d="M22 2 11 13" /></svg>);
+      const ActivityIcon = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M22 12h-4l-3 9L9 3l-3 9H2" /></svg>);
+      const SearchIcon = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>);
+      const ZapIcon = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>);
+      const ShieldIcon = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>);
+      const TargetIcon = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>);
+      const BanknoteIcon = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect width="20" height="12" x="2" y="6" rx="2" /><circle cx="12" cy="12" r="2" /><path d="M6 12h.01M18 12h.01" /></svg>);
+      const ArrowLeftIcon = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m15 18-6-6 6-6"/></svg>);
+      const MaximizeIcon = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M15 3h6v6" /><path d="M9 21H3v-6" /><path d="M21 3l-7 7" /><path d="M3 21l7-7" /></svg>);
+      const FireIcon = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.1.2-2.2.6-3Z" /></svg>);
+      const GlobeIcon = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10" /><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" /><path d="M2 12h20" /></svg>);
+      const PaletteIcon = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg>);
+      const RadarIcon = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M12 20a8 8 0 1 0 0-16 8 8 0 0 0 0 16Z" /><path d="M12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z" /><path d="M12 2v2" /><path d="M12 22v-2" /><path d="m17 20.66-1-1.73" /><path d="M11 10.27 7 3.34" /><path d="m20.66 17-1.73-1" /><path d="m3.34 7 1.73 1" /><path d="M14 12h8" /><path d="M2 12h2" /><path d="m20.66 7-1.73 1" /><path d="m3.34 17 1.73-1" /><path d="m17 3.34-1 1.73" /><path d="m11 13.73-4 6.93" /></svg>);
+
+      // Price Chart
+      const CustomTooltip = ({ active, payload, label }) => {
+        if (active && payload && payload.length) {
+          return (
+            <div className="bg-crypto-card border border-gray-700 p-2 rounded shadow-xl">
+              <p className="text-gray-400 text-xs mb-1">Time: {label}</p>
+              <p className="text-white font-mono font-bold">
+                ${payload[0].value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </p>
+            </div>
+          );
+        }
+        return null;
+      };
+
+      const PriceChart = ({ data, color }) => {
+        return (
+          <div className="h-[300px] w-full mt-4">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={data}>
+                <defs>
+                  <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor={color} stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor={color} stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <XAxis dataKey="time" axisLine={false} tickLine={false} tick={{ fill: '#64748B', fontSize: 12 }} />
+                <YAxis domain={['auto', 'auto']} axisLine={false} tickLine={false} tick={{ fill: '#64748B', fontSize: 12 }} tickFormatter={(val) => `$${val.toLocaleString()}`} width={60} />
+                <Tooltip content={<CustomTooltip />} />
+                <Area type="monotone" dataKey="price" stroke={color} strokeWidth={2} fillOpacity={1} fill="url(#colorPrice)" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        );
+      };
+
+      // Trend Card
+      const TrendAnalysisCard = ({ data, language }) => {
+        const t = TRANSLATIONS[language];
+        const getScoreColor = (score) => score >= 70 ? 'text-emerald-400' : score <= 30 ? 'text-red-400' : 'text-yellow-400';
+        const getProgressBarColor = (score) => score >= 70 ? 'bg-emerald-500' : score <= 30 ? 'bg-red-500' : 'bg-yellow-500';
+        const getTrendLabel = (trend) => {
+          switch(trend) { case 'Bullish': return t.bullish; case 'Bearish': return t.bearish; case 'Neutral': return t.neutral; default: return trend; }
+        }
+        return (
+          <div className="bg-crypto-card border border-indigo-500/30 rounded-xl p-5 shadow-lg w-full max-w-md mx-auto my-2 backdrop-blur-sm">
+            <div className="flex items-center justify-between mb-4">
+              <h4 className="text-crypto-text font-bold flex items-center gap-2"><ZapIcon className="w-4 h-4 text-indigo-400" />{t.deepScan}</h4>
+              <span className={`text-xs font-mono px-2 py-1 rounded bg-crypto-subtle border border-crypto-border ${getScoreColor(data.sentimentScore)}`}>{getTrendLabel(data.trend).toUpperCase()}</span>
+            </div>
+            <div className="mb-6">
+              <div className="flex justify-between text-xs text-crypto-muted mb-1"><span>{t.bearish}</span><span className="text-crypto-text font-bold">{data.sentimentScore}/100</span><span>{t.bullish}</span></div>
+              <div className="h-2 w-full bg-crypto-subtle rounded-full overflow-hidden"><div className={`h-full ${getProgressBarColor(data.sentimentScore)} transition-all duration-1000 ease-out`} style={{ width: `${data.sentimentScore}%` }}></div></div>
+            </div>
+            <div className="mb-4 p-3 bg-indigo-500/10 border border-indigo-500/20 rounded-lg"><p className="text-sm text-crypto-text italic leading-relaxed">"{data.keyNarrative}"</p></div>
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              <div className="space-y-2"><div className="flex items-center gap-2 text-xs text-crypto-muted uppercase tracking-wider font-semibold"><ShieldIcon className="w-3 h-3 text-emerald-500" /> {t.support}</div>{data.supportLevels.map((level, i) => (<div key={i} className="text-sm font-mono text-crypto-text bg-crypto-subtle/50 px-2 py-1 rounded border border-crypto-border">${level.toLocaleString(undefined, { maximumFractionDigits: 2 })}</div>))}</div>
+              <div className="space-y-2"><div className="flex items-center gap-2 text-xs text-crypto-muted uppercase tracking-wider font-semibold"><TargetIcon className="w-3 h-3 text-red-500" /> {t.resistance}</div>{data.resistanceLevels.map((level, i) => (<div key={i} className="text-sm font-mono text-crypto-text bg-crypto-subtle/50 px-2 py-1 rounded border border-crypto-border">${level.toLocaleString(undefined, { maximumFractionDigits: 2 })}</div>))}</div>
+            </div>
+            <div className="mt-4 pt-4 border-t border-crypto-border"><p className="text-xs text-indigo-300 font-semibold mb-1">{t.strategy.toUpperCase()}</p><p className="text-sm text-crypto-muted">{data.actionableInsight}</p></div>
+            <div className="mt-2 text-[10px] text-crypto-muted text-center">*{t.generatedBy}</div>
+          </div>
+        );
+      };
+
+      // AI Analyst
+      const AIAnalyst = ({ selectedCoin, language }) => {
+        const t = TRANSLATIONS[language];
+        const [messages, setMessages] = useState([]);
+        const [input, setInput] = useState('');
+        const [isLoading, setIsLoading] = useState(false);
+        const messagesEndRef = useRef(null);
+        useEffect(() => { setMessages([{ id: `init-${selectedCoin.id}-${language}`, role: MessageRole.MODEL, text: t.aiGreeting.replace('{coin}', `${selectedCoin.name} (${selectedCoin.symbol})`) }]); }, [selectedCoin.id, language]);
+        useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
+        const getContext = () => `Current Coin: ${selectedCoin.name} (${selectedCoin.symbol}) Price: $${selectedCoin.price} 24h Change: ${selectedCoin.change24h}% Market Cap: ${selectedCoin.marketCap} Volume: ${selectedCoin.volume} Description: ${selectedCoin.description} Price History: ${JSON.stringify(selectedCoin.history.map(h => h.price))}`;
+        
+        const handleDeepScan = async () => {
+          if (isLoading) return;
+          setIsLoading(true);
+          const analysisId = Date.now().toString();
+          setMessages(prev => [...prev, { id: analysisId + '_req', role: MessageRole.USER, text: t.deepScan }]);
+          setMessages(prev => [...prev, { id: analysisId, role: MessageRole.MODEL, text: "", isThinking: true }]);
+          try {
+            const result = await generateTrendAnalysis(selectedCoin.name, getContext(), language);
+            setMessages(prev => prev.map(msg => msg.id === analysisId ? (result ? { ...msg, isThinking: false, text: t.analysisComplete, trendResult: result } : { ...msg, isThinking: false, text: t.analysisError }) : msg));
+          } catch {
+             setMessages(prev => prev.map(msg => msg.id === analysisId ? { ...msg, text: t.analysisError, isThinking: false } : msg));
+          } finally { setIsLoading(false); }
+        };
+
+        const handleSend = async () => {
+          if (!input.trim() || isLoading) return;
+          const userMessage = { id: Date.now().toString(), role: MessageRole.USER, text: input };
+          setMessages(prev => [...prev, userMessage]);
+          setInput('');
+          setIsLoading(true);
+          const responseId = (Date.now() + 1).toString();
+          setMessages(prev => [...prev, { id: responseId, role: MessageRole.MODEL, text: '', isThinking: true }]);
+          try {
+            let accumulatedText = "";
+            const stream = streamMarketAnalysis(userMessage.text, getContext(), language);
+            for await (const chunk of stream) { accumulatedText += chunk; setMessages(prev => prev.map(msg => msg.id === responseId ? { ...msg, text: accumulatedText, isThinking: false } : msg)); }
+          } catch { setMessages(prev => prev.map(msg => msg.id === responseId ? { ...msg, text: t.analysisError, isThinking: false } : msg)); } finally { setIsLoading(false); }
+        };
+
+        return (
+          <div className="flex flex-col h-full bg-crypto-card border border-crypto-border rounded-2xl overflow-hidden shadow-2xl">
+            <div className="p-4 border-b border-crypto-border flex items-center gap-3 bg-gradient-to-r from-crypto-subtle to-crypto-card"><div className="p-2 bg-indigo-500/20 rounded-lg"><BrainCircuitIcon className="text-indigo-400 w-5 h-5" /></div><div><h3 className="font-bold text-crypto-text text-sm">{t.aiAnalyst}</h3><p className="text-xs text-indigo-400">Powered by Gemini 2.5 Flash</p></div></div>
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              {messages.map((msg) => (
+                <div key={msg.id} className={`flex flex-col ${msg.role === MessageRole.USER ? 'items-end' : 'items-start'}`}>
+                  <div className={`max-w-[85%] rounded-2xl p-4 text-sm leading-relaxed ${msg.role === MessageRole.USER ? 'bg-indigo-600 text-white rounded-tr-none' : 'bg-crypto-subtle text-crypto-text rounded-tl-none border border-crypto-border'}`}>
+                    {msg.isThinking && !msg.text ? (<div className="flex space-x-2 items-center h-5"><div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div><div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div><div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div></div>) : (<div className="whitespace-pre-wrap">{msg.text}</div>)}
+                  </div>
+                  {msg.trendResult && (<div className="w-full max-w-[95%] mt-2"><TrendAnalysisCard data={msg.trendResult} language={language} /></div>)}
+                </div>
+              ))}
+              <div ref={messagesEndRef} />
+            </div>
+            <div className="p-4 bg-crypto-subtle/50 border-t border-crypto-border"><div className="flex items-center gap-2"><button onClick={handleDeepScan} disabled={isLoading} className="p-2.5 rounded-xl bg-crypto-subtle border border-indigo-500/30 text-indigo-400 hover:bg-indigo-500/10 hover:border-indigo-500 transition-all flex items-center gap-2 group" title={t.deepScan}><ZapIcon className="w-5 h-5 group-hover:text-indigo-300" /><span className="hidden sm:block text-xs font-bold uppercase tracking-wider whitespace-nowrap">{t.deepScan}</span></button><div className="flex-1 flex items-center gap-2 bg-crypto-subtle rounded-xl p-2 border border-crypto-border focus-within:border-indigo-500 transition-colors"><input type="text" value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSend()} placeholder={`${t.askPlaceholder} ${selectedCoin.symbol}...`} className="flex-1 bg-transparent border-none outline-none text-crypto-text text-sm px-2 placeholder-crypto-muted" disabled={isLoading} /><button onClick={handleSend} disabled={isLoading || !input.trim()} className={`p-2 rounded-lg transition-all ${isLoading || !input.trim() ? 'bg-crypto-card text-crypto-muted cursor-not-allowed border border-crypto-border' : 'bg-indigo-600 text-white hover:bg-indigo-500 shadow-lg shadow-indigo-500/20'}`}><SendIcon className="w-4 h-4" /></button></div></div></div>
+          </div>
+        );
+      };
+
+      // Coin Detail
+      const CoinDetail = ({ coin, onBack, language }) => {
+        const t = TRANSLATIONS[language];
+        const [analysis, setAnalysis] = useState(null);
+        const [loading, setLoading] = useState(true);
+        useEffect(() => {
+          let isMounted = true;
+          const fetchAnalysis = async () => {
+            setLoading(true);
+            const context = `Coin: ${coin.name} (${coin.symbol}) Price: $${coin.price} 24h Change: ${coin.change24h}% Market Cap: ${coin.marketCap} Volume: ${coin.volume} Description: ${coin.description} Recent History: ${JSON.stringify(coin.history.map(h => h.price).slice(-10))}`;
+            const result = await generateTrendAnalysis(coin.name, context, language);
+            if (isMounted) { setAnalysis(result); setLoading(false); }
+          };
+          fetchAnalysis();
+          return () => { isMounted = false; };
+        }, [coin.id, language]);
+        const isPositive = coin.change24h >= 0;
+        const color = isPositive ? '#10B981' : '#EF4444';
+
+        return (
+          <div className="flex flex-col h-full animate-fade-in-up">
+            <div className="flex items-center gap-4 mb-6"><button onClick={onBack} className="p-2 rounded-full bg-crypto-subtle hover:bg-crypto-card text-crypto-text transition-colors border border-crypto-border"><ArrowLeftIcon className="w-5 h-5" /></button><div className="flex items-center gap-3">{coin.image && <img src={coin.image} className="w-8 h-8 rounded-full" />}<h2 className="text-xl font-bold text-crypto-text tracking-wide">{coin.name} {t.details}</h2></div></div>
+            <div className="flex-1 overflow-y-auto pr-2 space-y-6">
+              <div className="bg-gradient-to-br from-crypto-card to-crypto-subtle rounded-3xl p-8 border border-crypto-border shadow-2xl relative overflow-hidden">
+                 <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-600/10 rounded-full blur-[100px] -mr-20 -mt-20 pointer-events-none"></div>
+                 <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-end">
+                   <div><div className="flex items-baseline gap-2 mb-2"><h1 className="text-5xl md:text-6xl font-black text-crypto-text tracking-tight">${coin.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 })}</h1></div><div className={`flex items-center gap-2 text-lg font-medium px-3 py-1 rounded-full w-fit ${isPositive ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'}`}>{isPositive ? <TrendingUpIcon className="w-5 h-5" /> : <TrendingDownIcon className="w-5 h-5" />}<span>{coin.change24h > 0 ? '+' : ''}{coin.change24h}% (24h)</span></div></div>
+                   <div className="mt-6 md:mt-0 flex gap-4 text-sm text-crypto-muted"><div className="flex flex-col items-end"><span>{t.vol}</span><span className="text-crypto-text font-mono font-bold">{coin.volume}</span></div><div className="w-px bg-crypto-border h-10"></div><div className="flex flex-col items-end"><span>{t.marketCap}</span><span className="text-crypto-text font-mono font-bold">{coin.marketCap}</span></div></div>
+                 </div>
+                 <div className="h-[350px] w-full mt-8"><PriceChart data={coin.history} color={color} /></div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+                <div className="md:col-span-12 lg:col-span-8">
+                  <div className="bg-crypto-card border border-indigo-500/30 rounded-2xl p-6 shadow-xl relative overflow-hidden h-full">
+                    <div className="absolute inset-0 bg-indigo-500/5 pointer-events-none"></div>
+                    <div className="flex items-center gap-3 mb-6 relative z-10"><div className="p-2 bg-indigo-500/20 rounded-lg animate-pulse"><ZapIcon className="w-6 h-6 text-indigo-400" /></div><div><h3 className="text-lg font-bold text-crypto-text">Gemini Live Analysis</h3><p className="text-xs text-indigo-300">Generated automatically based on realtime data</p></div></div>
+                    {loading ? (<div className="flex flex-col items-center justify-center py-12 space-y-4"><div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div><p className="text-indigo-200 animate-pulse">{t.loading}</p></div>) : analysis ? (
+                      <div className="grid md:grid-cols-2 gap-6 relative z-10">
+                         <div className="space-y-4">
+                            <div className="p-4 bg-crypto-subtle/50 rounded-xl border border-crypto-border"><span className="text-xs text-crypto-muted uppercase tracking-widest">{t.sentiment}</span><div className="flex items-center gap-4 mt-2"><div className="text-4xl font-bold text-crypto-text">{analysis.sentimentScore}</div><div className="h-2 flex-1 bg-gray-800 rounded-full overflow-hidden"><div className={`h-full transition-all duration-1000 ${analysis.sentimentScore > 60 ? 'bg-emerald-500' : analysis.sentimentScore < 40 ? 'bg-red-500' : 'bg-yellow-500'}`} style={{width: `${analysis.sentimentScore}%`}}></div></div></div><p className="mt-2 text-sm font-medium text-crypto-muted">{analysis.trend} Trend detected</p></div>
+                            <div className="p-4 bg-crypto-subtle/50 rounded-xl border border-crypto-border"><span className="text-xs text-crypto-muted uppercase tracking-widest">{t.strategy}</span><p className="mt-2 text-indigo-300 text-sm font-semibold">{analysis.actionableInsight}</p></div>
+                         </div>
+                         <div className="space-y-4">
+                            <div className="p-4 bg-crypto-subtle/50 rounded-xl border border-crypto-border h-full"><span className="text-xs text-crypto-muted uppercase tracking-widest">{t.keyNarrative}</span><p className="mt-2 text-crypto-muted text-sm leading-relaxed italic">"{analysis.keyNarrative}"</p><div className="mt-4 pt-4 border-t border-crypto-border grid grid-cols-2 gap-2"><div><span className="text-xs text-emerald-500 block mb-1">{t.support}</span>{analysis.supportLevels.slice(0,2).map((l, i) => (<div key={i} className="font-mono text-xs text-crypto-muted">${l.toLocaleString()}</div>))}</div><div><span className="text-xs text-red-500 block mb-1">{t.resistance}</span>{analysis.resistanceLevels.slice(0,2).map((l, i) => (<div key={i} className="font-mono text-xs text-crypto-muted">${l.toLocaleString()}</div>))}</div></div></div>
+                         </div>
+                      </div>
+                    ) : (<div className="text-center text-crypto-muted py-8">{t.analysisError}</div>)}
+                  </div>
+                </div>
+                <div className="md:col-span-12 lg:col-span-4 space-y-4">
+                   <div className="bg-crypto-subtle/50 border border-crypto-border rounded-xl p-4"><h4 className="text-crypto-muted text-sm mb-2">{t.about} {coin.name}</h4><p className="text-sm text-crypto-text leading-relaxed">{coin.description}</p></div>
+                   <div className="bg-crypto-subtle/50 border border-crypto-border rounded-xl p-4"><h4 className="text-crypto-muted text-sm mb-2">{t.range24h}</h4><div className="flex justify-between items-center text-sm font-mono text-crypto-text"><span>L: ${coin.low24h?.toLocaleString() || 'N/A'}</span><div className="flex-1 mx-2 h-1 bg-crypto-border rounded-full"></div><span>H: ${coin.high24h?.toLocaleString() || 'N/A'}</span></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      };
+
+      // Intel Dashboard
+      const IntelDashboard = ({ language }) => {
+        const t = TRANSLATIONS[language];
+        const [entities, setEntities] = useState([]);
+        const [transactions, setTransactions] = useState([]);
+        const [loading, setLoading] = useState(true);
+        useEffect(() => { const loadData = async () => { setLoading(true); const data = await fetchIntelData(); setEntities(data.entities); setTransactions(data.transactions); setLoading(false); }; loadData(); }, []);
+
+        return (
+          <div className="bg-crypto-card rounded-2xl border border-crypto-border shadow-xl flex-1 overflow-hidden flex flex-col h-full">
+             <div className="p-6 border-b border-crypto-border bg-crypto-subtle/50 flex justify-between items-center"><div><h3 className="font-bold text-crypto-text text-lg flex items-center gap-2"><RadarIcon className="text-emerald-400 w-5 h-5" />{t.intel} Dashboard</h3><p className="text-xs text-crypto-muted mt-1">Simulating Arkham Intelligence Data Feed</p></div><div className="bg-crypto-subtle px-3 py-1 rounded-full border border-crypto-border"><span className="text-xs text-crypto-muted font-mono">{t.source}: Simulated Feed</span></div></div>
+             <div className="overflow-y-auto flex-1 p-6 space-y-6">
+                {loading ? (<div className="flex flex-col items-center justify-center h-full gap-2"><div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div><p className="text-sm text-crypto-muted">{t.loading}</p></div>) : (
+                  <>
+                    <div><h4 className="text-crypto-text font-bold mb-4 flex items-center gap-2"><TargetIcon className="w-4 h-4 text-indigo-400" />{t.entities} Watchlist</h4><div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">{entities.map(entity => (<div key={entity.id} className="bg-crypto-subtle/30 border border-crypto-border rounded-xl p-4 hover:bg-crypto-subtle/50 transition-colors"><div className="flex justify-between items-start mb-2"><div><h5 className="font-bold text-crypto-text text-sm">{entity.name}</h5><span className="text-xs text-crypto-muted">{entity.label}</span></div><span className={`text-xs px-2 py-0.5 rounded font-mono ${entity.pnl24h >= 0 ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}`}>{entity.pnl24h > 0 ? '+' : ''}{entity.pnl24h}%</span></div><div className="flex flex-wrap gap-1 mt-3 mb-3">{entity.tags.map(tag => (<span key={tag} className="text-[10px] px-1.5 py-0.5 rounded bg-crypto-card border border-crypto-border text-crypto-muted">{tag}</span>))}</div><div className="flex justify-between items-end border-t border-crypto-border pt-3"><span className="text-xs text-crypto-muted">Balance</span><span className="text-sm font-mono font-bold text-crypto-text">{entity.balanceUsd}</span></div></div>))}</div></div>
+                    <div><h4 className="text-crypto-text font-bold mb-4 flex items-center gap-2"><ActivityIcon className="w-4 h-4 text-orange-400" />{t.transactions}</h4><div className="overflow-x-auto rounded-xl border border-crypto-border"><table className="w-full text-left border-collapse"><thead className="bg-crypto-subtle/50"><tr><th className="p-3 text-xs font-semibold text-crypto-muted uppercase">Time</th><th className="p-3 text-xs font-semibold text-crypto-muted uppercase">{t.from}</th><th className="p-3 text-xs font-semibold text-crypto-muted uppercase">{t.to}</th><th className="p-3 text-xs font-semibold text-crypto-muted uppercase text-right">{t.value}</th><th className="p-3 text-xs font-semibold text-crypto-muted uppercase text-right">{t.token}</th></tr></thead><tbody className="bg-crypto-card">{transactions.map((tx) => (<tr key={tx.id} className="border-b border-crypto-border last:border-0 hover:bg-crypto-subtle/20 transition-colors"><td className="p-3 text-xs text-crypto-muted font-mono whitespace-nowrap">{tx.time}</td><td className="p-3"><div className="flex flex-col"><span className="text-xs font-bold text-crypto-text">{tx.fromLabel || tx.fromAddress}</span>{tx.fromLabel && <span className="text-[10px] text-crypto-muted truncate w-24">{tx.fromAddress}</span>}</div></td><td className="p-3"><div className="flex flex-col"><span className="text-xs font-bold text-crypto-text">{tx.toLabel || tx.toAddress}</span>{tx.toLabel && <span className="text-[10px] text-crypto-muted truncate w-24">{tx.toAddress}</span>}</div></td><td className="p-3 text-right text-xs font-mono font-bold text-crypto-text">${tx.valueUsd.toLocaleString()}</td><td className="p-3 text-right"><div className="flex flex-col items-end"><span className="text-xs font-bold text-crypto-text">{tx.tokenSymbol}</span><span className="text-[10px] text-crypto-muted">{tx.tokenAmount.toFixed(2)}</span></div></td></tr>))}</tbody></table></div></div>
+                  </>
+                )}
+             </div>
+          </div>
+        );
+      };
+
+      const App = () => {
+        const [selectedCoin, setSelectedCoin] = useState(null);
+        const [coins, setCoins] = useState([]);
+        const [fundingData, setFundingData] = useState([]);
+        const [trendingCoins, setTrendingCoins] = useState([]);
+        const [searchTerm, setSearchTerm] = useState('');
+        const [viewMode, setViewMode] = useState('market');
+        const [appState, setAppState] = useState('dashboard');
+        const [loading, setLoading] = useState(true);
+        const [language, setLanguage] = useState('zh-TW');
+        const [theme, setTheme] = useState('dark');
+        const [langMenuOpen, setLangMenuOpen] = useState(false);
+        const [themeMenuOpen, setThemeMenuOpen] = useState(false);
+        const t = TRANSLATIONS[language];
+
+        useEffect(() => {
+          const loadData = async () => {
+            setLoading(true);
+            const [marketData, funding, trending] = await Promise.all([fetchMarketData(), fetchFundingData(), fetchTrendingCoins()]);
+            setCoins(marketData); setFundingData(funding); setTrendingCoins(trending);
+            if (marketData.length > 0) setSelectedCoin(marketData[0]); else { setSelectedCoin(COINS[0]); setCoins(COINS); }
+            setLoading(false);
+          };
+          loadData();
+        }, []);
+
+        const filteredCoins = coins.filter(coin => coin.name.toLowerCase().includes(searchTerm.toLowerCase()) || coin.symbol.toLowerCase().includes(searchTerm.toLowerCase()));
+        const filteredFunding = fundingData.filter(round => round.name.toLowerCase().includes(searchTerm.toLowerCase()) || round.category.toLowerCase().includes(searchTerm.toLowerCase()) || round.investors.some(inv => inv.toLowerCase().includes(searchTerm.toLowerCase())));
+        const activeCoin = selectedCoin || coins[0] || COINS[0];
+        const isPositive = activeCoin.change24h >= 0;
+        const color = isPositive ? '#10B981' : '#EF4444';
+
+        const handleOpenDetail = () => setAppState('detail');
+        const handleBackToDashboard = () => setAppState('dashboard');
+
+        return (
+          <div className={`min-h-screen bg-crypto-main text-crypto-text selection:bg-indigo-500/30 font-sans theme-${theme} main-container`}>
+            <nav className="sticky top-0 z-50 backdrop-blur-md bg-crypto-main/80 border-b border-crypto-border h-16 flex items-center px-6 justify-between">
+              <div className="flex items-center gap-2 cursor-pointer" onClick={handleBackToDashboard}><div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center shadow-lg shadow-indigo-500/20"><ActivityIcon className="text-white w-5 h-5" /></div><span className="font-bold text-xl tracking-tight text-crypto-text hidden sm:inline">CryptoSight<span className="text-indigo-400">.AI</span></span></div>
+              {appState === 'dashboard' && (
+                <div className="flex items-center gap-1 bg-crypto-subtle p-1 rounded-xl border border-crypto-border">
+                   <button onClick={() => setViewMode('market')} className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-all flex items-center gap-2 ${viewMode === 'market' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/25' : 'text-crypto-muted hover:text-crypto-text hover:bg-white/5'}`}><ActivityIcon className="w-4 h-4" /> <span className="hidden sm:inline">{t.market}</span></button>
+                   <button onClick={() => setViewMode('financing')} className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-all flex items-center gap-2 ${viewMode === 'financing' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/25' : 'text-crypto-muted hover:text-crypto-text hover:bg-white/5'}`}><BanknoteIcon className="w-4 h-4" /> <span className="hidden sm:inline">{t.financing}</span></button>
+                   <button onClick={() => setViewMode('intel')} className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-all flex items-center gap-2 ${viewMode === 'intel' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/25' : 'text-crypto-muted hover:text-crypto-text hover:bg-white/5'}`}><RadarIcon className="w-4 h-4" /> <span className="hidden sm:inline">{t.intel}</span></button>
+                </div>
+              )}
+              <div className="flex items-center gap-3">
+                {appState === 'dashboard' && (<div className="flex items-center bg-crypto-subtle border border-crypto-border rounded-full px-4 py-1.5 w-40 sm:w-56"><SearchIcon className="w-4 h-4 text-crypto-muted mr-2" /><input type="text" placeholder={t.searchPlaceholder} className="bg-transparent border-none outline-none text-sm w-full text-crypto-text placeholder-crypto-muted" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} /></div>)}
+                <div className="relative"><button onClick={() => setThemeMenuOpen(!themeMenuOpen)} className="p-2 rounded-full bg-crypto-subtle border border-crypto-border hover:bg-crypto-card transition-colors" title={t.theme}><PaletteIcon className="w-5 h-5 text-crypto-muted" /></button>{themeMenuOpen && (<div className="absolute right-0 mt-2 w-48 bg-crypto-card border border-crypto-border rounded-xl shadow-xl overflow-hidden z-50">{THEMES.map((th) => (<button key={th.id} onClick={() => { setTheme(th.id); setThemeMenuOpen(false); }} className={`w-full text-left px-4 py-2.5 text-sm hover:bg-crypto-subtle flex items-center gap-3 ${theme === th.id ? 'text-indigo-400 bg-crypto-subtle' : 'text-crypto-text'}`}><div className="w-4 h-4 rounded-full border border-gray-500" style={{background: th.colors.bg}}></div>{th.name}</button>))}</div>)}{themeMenuOpen && (<div className="fixed inset-0 z-40" onClick={() => setThemeMenuOpen(false)}></div>)}</div>
+                <div className="relative"><button onClick={() => setLangMenuOpen(!langMenuOpen)} className="p-2 rounded-full bg-crypto-subtle border border-crypto-border hover:bg-crypto-card transition-colors"><GlobeIcon className="w-5 h-5 text-crypto-muted" /></button>{langMenuOpen && (<div className="absolute right-0 mt-2 w-40 bg-crypto-card border border-crypto-border rounded-xl shadow-xl overflow-hidden z-50">{LANGUAGES.map((lang) => (<button key={lang.code} onClick={() => { setLanguage(lang.code); setLangMenuOpen(false); }} className={`w-full text-left px-4 py-2.5 text-sm hover:bg-crypto-subtle flex items-center gap-2 ${language === lang.code ? 'text-indigo-400 bg-crypto-subtle' : 'text-crypto-text'}`}><span className="text-lg">{lang.flag}</span>{lang.name}</button>))}</div>)}{langMenuOpen && (<div className="fixed inset-0 z-40" onClick={() => setLangMenuOpen(false)}></div>)}</div>
+              </div>
+            </nav>
+            <main className="container mx-auto p-4 md:p-6 lg:p-8 max-w-7xl">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-[calc(100vh-8rem)] min-h-[800px]">
+                <div className="lg:col-span-8 flex flex-col gap-6 h-full overflow-y-auto pr-2 relative no-scrollbar">
+                  {appState === 'detail' ? (<CoinDetail coin={activeCoin} onBack={handleBackToDashboard} language={language} />) : (
+                    viewMode === 'intel' ? (<IntelDashboard language={language} />) :
+                    viewMode === 'market' ? (
+                      <>
+                        {trendingCoins.length > 0 && (<div className="w-full"><div className="flex items-center gap-2 mb-3 px-1"><FireIcon className="w-5 h-5 text-orange-500" /><h3 className="text-sm font-bold text-crypto-muted uppercase tracking-wider">{t.trending}</h3></div><div className="flex gap-4 overflow-x-auto pb-2 no-scrollbar">{trendingCoins.map(trend => (<div key={trend.id} className="min-w-[160px] bg-crypto-subtle/50 border border-crypto-border rounded-xl p-3 hover:border-indigo-500/50 transition-all cursor-pointer group shadow-sm"><div className="flex items-center gap-3 mb-2"><img src={trend.thumb} alt={trend.symbol} className="w-6 h-6 rounded-full" /><span className="font-bold text-sm text-crypto-text group-hover:text-indigo-400">{trend.symbol}</span></div><div className="text-xs text-crypto-muted">{t.rank} #{trend.market_cap_rank}</div></div>))}</div></div>)}
+                        <div className="bg-crypto-card rounded-2xl p-6 border border-crypto-border shadow-xl relative overflow-hidden group shrink-0 transition-all hover:border-gray-500/50"><div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none group-hover:bg-indigo-500/20 transition-all duration-700"></div><div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-6 relative z-10 w-full"><div><div className="flex items-center gap-3 mb-2">{activeCoin.image && <img src={activeCoin.image} alt={activeCoin.name} className="w-8 h-8" />}<h1 className="text-3xl font-bold text-crypto-text">{activeCoin.name}</h1><span className="px-2 py-0.5 rounded text-xs font-mono font-bold bg-crypto-subtle text-crypto-muted border border-crypto-border">{activeCoin.symbol}</span></div><p className="text-crypto-muted max-w-lg text-sm line-clamp-2">{activeCoin.description}</p></div><div className="text-right mt-4 md:mt-0 flex flex-col items-end"><div className="text-4xl font-mono font-bold text-crypto-text mb-1">${activeCoin.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 8 })}</div><div className={`flex items-center justify-end gap-1 ${isPositive ? 'text-crypto-success' : 'text-crypto-danger'}`}>{isPositive ? <TrendingUpIcon className="w-4 h-4" /> : <TrendingDownIcon className="w-4 h-4" />}<span className="font-bold">{Math.abs(activeCoin.change24h).toFixed(2)}% (24h)</span></div><button onClick={handleOpenDetail} className="mt-3 flex items-center gap-2 text-xs font-bold text-indigo-400 hover:text-indigo-300 bg-indigo-500/10 hover:bg-indigo-500/20 px-3 py-1.5 rounded-lg transition-all border border-indigo-500/20"><MaximizeIcon className="w-3 h-3" /> {t.analysis}</button></div></div><div className="border-t border-crypto-border pt-4 relative z-10"><h3 className="text-sm font-semibold text-crypto-muted mb-2">{t.priceAction7d}</h3>{activeCoin.history.length > 0 ? (<PriceChart data={activeCoin.history} color={color} />) : (<div className="h-[200px] flex items-center justify-center text-crypto-muted text-sm">{t.chartDataUnavailable}</div>)}</div></div>
+                        <div className="bg-crypto-card rounded-2xl border border-crypto-border shadow-xl flex-1 overflow-hidden flex flex-col min-h-[400px]"><div className="p-4 border-b border-crypto-border bg-crypto-subtle/50 flex justify-between items-center"><h3 className="font-bold text-crypto-text">{t.marketOverview}</h3><span className="text-xs text-crypto-muted">{t.source}: CoinGecko</span></div><div className="overflow-y-auto flex-1">{loading ? (<div className="flex flex-col items-center justify-center h-full gap-2"><div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div><p className="text-sm text-crypto-muted">{t.loading}</p></div>) : (<table className="w-full text-left border-collapse"><thead className="bg-crypto-subtle/30 sticky top-0 backdrop-blur-sm z-10"><tr><th className="p-4 text-xs font-semibold text-crypto-muted uppercase">{t.asset}</th><th className="p-4 text-xs font-semibold text-crypto-muted uppercase text-right">{t.price}</th><th className="p-4 text-xs font-semibold text-crypto-muted uppercase text-right">{t.change}</th><th className="p-4 text-xs font-semibold text-crypto-muted uppercase text-right hidden sm:table-cell">{t.vol}</th></tr></thead><tbody>{filteredCoins.map((coin) => (<tr key={coin.id} onClick={() => setSelectedCoin(coin)} onDoubleClick={handleOpenDetail} className={`border-b border-crypto-border hover:bg-white/5 cursor-pointer transition-colors ${activeCoin.id === coin.id ? 'bg-indigo-500/10 border-l-4 border-l-indigo-500' : 'border-l-4 border-l-transparent'}`}><td className="p-4"><div className="flex items-center gap-3">{coin.image ? (<img src={coin.image} alt={coin.symbol} className="w-8 h-8 rounded-full" />) : (<div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs bg-crypto-subtle text-crypto-muted`}>{coin.symbol[0]}</div>)}<div><p className="font-bold text-sm text-crypto-text">{coin.name}</p><div className="flex items-center gap-2"><span className="text-xs text-crypto-muted px-1.5 py-0.5 bg-crypto-subtle rounded">{coin.rank}</span><p className="text-xs text-crypto-muted">{coin.symbol}</p></div></div></div></td><td className="p-4 text-right font-mono text-sm text-crypto-muted">${coin.price.toLocaleString(undefined, { maximumFractionDigits: 8 })}</td><td className={`p-4 text-right font-mono text-sm ${coin.change24h >= 0 ? 'text-crypto-success' : 'text-crypto-danger'}`}>{coin.change24h > 0 ? '+' : ''}{coin.change24h?.toFixed(2)}%</td><td className="p-4 text-right font-mono text-sm text-crypto-muted hidden sm:table-cell">{coin.volume}</td></tr>))}</tbody></table>)}</div></div>
+                      </>
+                    ) : (
+                      <div className="bg-crypto-card rounded-2xl border border-crypto-border shadow-xl flex-1 overflow-hidden flex flex-col h-full"><div className="p-6 border-b border-crypto-border bg-crypto-subtle/50 flex justify-between items-center"><div><h3 className="font-bold text-crypto-text text-lg flex items-center gap-2"><BanknoteIcon className="text-indigo-400 w-5 h-5" />{t.recentRaises}</h3><p className="text-xs text-crypto-muted mt-1">Simulating ICO Analytics style data feed</p></div><div className="bg-crypto-subtle px-3 py-1 rounded-full border border-crypto-border"><span className="text-xs text-crypto-muted font-mono">{t.source}: DefiLlama</span></div></div><div className="overflow-y-auto flex-1">{loading ? (<div className="flex flex-col items-center justify-center h-full gap-2"><div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div><p className="text-sm text-crypto-muted">{t.loading}</p></div>) : (<div className="grid grid-cols-1 gap-0"><table className="w-full text-left border-collapse"><thead className="bg-crypto-subtle/30 sticky top-0 backdrop-blur-sm z-10"><tr><th className="p-4 text-xs font-semibold text-crypto-muted uppercase tracking-wider">{t.projectSector}</th><th className="p-4 text-xs font-semibold text-crypto-muted uppercase tracking-wider hidden sm:table-cell">{t.round}</th><th className="p-4 text-xs font-semibold text-crypto-muted uppercase tracking-wider text-right">{t.amountVal}</th><th className="p-4 text-xs font-semibold text-crypto-muted uppercase tracking-wider hidden lg:table-cell w-1/3">{t.investors}</th></tr></thead><tbody>{filteredFunding.map((round) => (<tr key={round.id} className="border-b border-crypto-border hover:bg-white/5 transition-colors group"><td className="p-4 align-top"><div className="flex flex-col"><div className="flex items-center gap-2"><span className="font-bold text-sm text-crypto-text group-hover:text-indigo-400 transition-colors">{round.name}</span><span className="text-[10px] text-crypto-muted font-mono">{round.date}</span></div><div className="flex flex-wrap gap-1 mt-1.5"><span className={`text-[10px] px-2 py-0.5 rounded border ${round.category.includes('DeFi') ? 'bg-blue-500/10 border-blue-500/30 text-blue-400' : round.category.includes('Game') ? 'bg-purple-500/10 border-purple-500/30 text-purple-400' : round.category.includes('Infra') ? 'bg-gray-500/10 border-gray-500/30 text-gray-400' : 'bg-indigo-500/10 border-indigo-500/30 text-indigo-400'}`}>{round.category}</span></div></div></td><td className="p-4 align-top hidden sm:table-cell"><span className="px-2 py-1 rounded bg-crypto-subtle border border-crypto-border text-xs text-crypto-muted font-medium">{round.round}</span></td><td className="p-4 align-top text-right"><div className="font-mono text-sm font-bold text-emerald-400">{round.amount}</div><div className="text-xs text-crypto-muted mt-1">Val: {round.valuation}</div></td><td className="p-4 align-top hidden lg:table-cell"><div className="flex flex-wrap gap-1.5">{round.leadInvestors && round.leadInvestors.length > 0 && (round.leadInvestors.map((inv, i) => (<span key={`lead-${i}`} className="text-xs px-2 py-0.5 bg-yellow-500/10 border border-yellow-500/30 text-yellow-500 rounded flex items-center gap-1">★ {inv}</span>)))}{round.investors.slice(0, 3).map((inv, i) => (<span key={i} className="text-xs px-2 py-0.5 bg-crypto-subtle border border-crypto-border text-crypto-muted rounded">{inv}</span>))}{round.investors.length > 3 && (<span className="text-xs text-crypto-muted px-1 py-0.5">+{round.investors.length - 3}</span>)}</div></td></tr>))}</tbody></table></div>)}</div></div>
+                    )
+                  )}
+                </div>
+                <div className="lg:col-span-4 h-full"><AIAnalyst selectedCoin={activeCoin} language={language} /></div>
+              </div>
+            </main>
+          </div>
+        );
+      };
+
+      const root = ReactDOM.createRoot(document.getElementById('root'));
+      root.render(
+        <React.StrictMode>
+          <App />
+        </React.StrictMode>
+      );
+    </script>
+  </body>
+</html>

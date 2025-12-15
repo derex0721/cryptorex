@@ -1,0 +1,5 @@
+{
+  "name": "CryptoSight AI",
+  "description": "A high-fidelity cryptocurrency dashboard featuring real-time market simulation, interactive charts, and an embedded AI analyst powered by Gemini 2.5 Flash to provide instant market insights and coin predictions.",
+  "requestFramePermissions": []
+}
